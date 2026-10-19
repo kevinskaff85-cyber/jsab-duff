@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Duff - Fase: Cheat Codes (Nitro Fun Style)</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; color: white; }
+        canvas { border: 2px solid #ffffff; background: #030308; box-shadow: 0 0 35px rgba(255, 255, 255, 0.2); }
+        .ui { position: absolute; top: 25px; text-align: center; width: 100%; pointer-events: none; z-index: 10; text-shadow: 0 0 10px #000; }
+        #startBtn { 
+            position: absolute; 
+            padding: 18px 40px; 
+            font-size: 22px; 
+            cursor: pointer; 
+            background: linear-gradient(45deg, #ffffff, #ff0077); 
+            color: #000;
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            z-index: 20;
+            box-shadow: 0 0 20px #ffffff;
+            transition: 0.2s;
+        }
+        #startBtn:hover { transform: scale(1.08); box-shadow: 0 0 30px #ff0077; }
+    </style>
+</head>
+<body>
+    <div class="ui">
+        <b style="font-size: 22px; color: #ffffff;">FASE: CHEAT CODES (NITRO FUN)</b><br>
+        <small style="opacity: 0.8;">F: Dash | S: Queda Rápida | Espaço/W: Pular | A/D: Mover</small>
+    </div>
+
+    <button id="startBtn">INICIAR FASE COMPLETA</button>
+    <canvas id="gameCanvas" style="display:none"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const startBtn = document.getElementById('startBtn');
+canvas.width = 800; canvas.height = 600;
+
+let audioCtx = null;
+let isStarted = false;
+let gameTime = 0;
+let songEnded = false;
+const totalSongDurationFrames = 1500; // Duração exata da fase (~25 segundos intensos)
+
+// DUFF
+let duff = {
+    x: 150, y: 300, radius: 18, 
+    vx: 0, vy: 0, gravity: 0.45, jump: -7.5,
+    dashPower: 22, dashTime: 0,
+    hp: 100, maxHp: 100,
+    glowColor: '#ffffff'
+};
+
+let obstacles = [];
+let particles = [];
+
+// SINTETIZADOR ESTILO CHIPTUNE (NITRO FUN - CHEAT CODES)
+const notes = [261.63, 329.63, 392.00, 523.25, 587.33, 659.25, 783.99]; 
+function playChiptuneBeat() {
+    if (audioCtx && audioCtx.state === 'running' && !songEnded) {
+        try {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = (gameTime % 24 === 0) ? 'sawtooth' : 'square';
+            let note = notes[Math.floor((gameTime / 6) % notes.length)];
+            osc.frequency.setValueAtTime(note, audioCtx.currentTime);
+
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        } catch(e) {}
+    }
+}
+
+// GERADOR DE PADRÕES MAIS EMOCIONANTES
+function spawnObstaclePattern() {
+    let patternType = Math.floor(Math.random() * 3);
+
+    if (patternType === 0) {
+        // Paredes de Laser Verticais (Invasão)
+        let hPos = Math.random() > 0.5 ? 'top' : 'bottom';
+        obstacles.push({
+            x: canvas.width, y: hPos === 'top' ? 0 : canvas.height - 220,
+            w: 45, h: 220, color: '#ff0055', speed: 7.5, type: 'laser'
+        });
+    } else if (patternType === 1) {
+        // Barras horizontais rápidas no meio
+        obstacles.push({
+            x: canvas.width, y: Math.random() * 300 + 100,
+            w: 140, h: 25, color: '#ff00aa', speed: 8, type: 'block'
+        });
+    } else {
+        // Bloco duplo em ritmo acelerado
+        obstacles.push({
+            x: canvas.width, y: 50,
+            w: 35, h: 180, color: '#ff0055', speed: 7.5, type: 'laser'
+        });
+        obstacles.push({
+            x: canvas.width + 60, y: canvas.height - 180,
+            w: 35, h: 180, color: '#ff0055', speed: 7.5, type: 'laser'
+        });
+    }
+}
+
+for (let i = 0; i < 35; i++) {
+    particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 2 + 1
+    });
+}
+
+// CONTROLES
+let keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'KeyF' && isStarted && !songEnded) {
+        let isUp = keys['Space'] || keys['ArrowUp'] || keys['KeyW'];
+        let isLeft = keys['ArrowLeft'] || keys['KeyA'];
+        let isRight = keys['ArrowRight'] || keys['KeyD'];
+        duff.dashTime = 12;
+        if (isUp) duff.vy = -duff.dashPower;
+        if (isLeft) duff.vx = -duff.dashPower;
+        if (isRight) duff.vx = duff.dashPower;
+        if (!isUp && !isLeft && !isRight) duff.vy = -duff.dashPower * 0.7;
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+startBtn.onclick = function() {
+    startBtn.style.display = 'none';
+    canvas.style.display = 'block';
+    isStarted = true;
+    songEnded = false;
+    gameTime = 0;
+    duff.hp = 100;
+    obstacles = [];
+
+    try {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioClass) {
+            audioCtx = new AudioClass();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+    } catch (e) {}
+
+    gameLoop();
+};
+
+function update() {
+    if (songEnded) return;
+
+    gameTime++;
+
+    // Fim da fase e da música sincronizada
+    if (gameTime >= totalSongDurationFrames) {
+        songEnded = true;
+        return;
+    }
+
+    // Ritmo acelerado e constante
+    if (gameTime % 12 === 0) {
+        playChiptuneBeat();
+    }
+    if (gameTime % 25 === 0) {
+        spawnObstaclePattern();
+    }
+
+    // FÍSICA DO DUFF (FREQ. NORMAL - BRANCA)
+    if (duff.dashTime > 0) {
+        duff.dashTime--;
+        duff.vx *= 0.92;
+        duff.vy *= 0.92;
+    } else {
+        if (keys['ArrowLeft'] || keys['KeyA']) duff.vx -= 0.85;
+        else if (keys['ArrowRight'] || keys['KeyD']) duff.vx += 0.85;
+        duff.vx *= 0.85;
+
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && duff.vy > duff.jump) {
+            duff.vy = duff.jump;
+        }
+
+        let curGrav = (keys['ArrowDown'] || keys['KeyS']) ? duff.gravity * 4 : duff.gravity;
+        duff.vy += curGrav;
+    }
+
+    duff.x += duff.vx; 
+    duff.y += duff.vy;
+    
+    // Limites da tela
+    if (duff.y + duff.radius > canvas.height) { duff.y = canvas.height - duff.radius; duff.vy *= -0.3; }
+    if (duff.y - duff.radius < 0) { duff.y = duff.radius; duff.vy = 0; }
+    if (duff.x < duff.radius) duff.x = duff.radius;
+    if (duff.x > canvas.width - duff.radius) duff.x = canvas.width - duff.radius;
+
+    particles.forEach(p => {
+        p.x -= p.speed;
+        if (p.x < 0) p.x = canvas.width;
+    });
+
+    // COLISÃO COM DANO REAL DOS OBSTÁCULOS VERMELHOS/ROSA
+    obstacles.forEach(obs => {
+        obs.x -= obs.speed;
+        if (duff.x + duff.radius > obs.x && duff.x - duff.radius < obs.x + obs.w &&
+            duff.y + duff.radius > obs.y && duff.y - duff.radius < obs.y + obs.h) {
+            
+            // Se não estiver em dash, leva dano e recua
+            if (duff.dashTime === 0) {
+                duff.hp -= 25;
+                duff.vx = -12; // Recuo forte
+                duff.vy = -5;
+
+                // Se o HP zerar, reinicia a fase
+                if (duff.hp <= 0) {
+                    gameTime = 0;
+                    obstacles = [];
+                    duff.hp = 100;
+                    duff.x = 150;
+                    duff.y = 300;
+                }
+            }
+        }
+    });
+
+    obstacles = obstacles.filter(o => o.x + o.w > 0);
+}
+
+function draw() {
+    // Fundo com flash reativo na batida
+    let flash = (gameTime % 12 === 0) ? 'rgba(255, 0, 100, 0.15)' : 'rgba(3, 3, 8, 0.45)';
+    ctx.fillStyle = flash;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (songEnded) {
+        // TELA DE VITÓRIA
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 40px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 25; ctx.shadowColor = '#00ffcc';
+        ctx.fillText("FASE CONCLUÍDA!", canvas.width / 2, canvas.height / 2 - 20);
+        
+        ctx.font = '20px Segoe UI';
+        ctx.fillStyle = '#00ffcc';
+        ctx.fillText("Música e ritmo finalizados com sucesso!", canvas.width / 2, canvas.height / 2 + 30);
+        return;
+    }
+
+    // --- BARRA DE PROGRESSO NO TOPO ---
+    let barX = 200, barY = 35, barWidth = 400, barHeight = 8;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    let progress = Math.min(1, gameTime / totalSongDurationFrames);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 15; ctx.shadowColor = '#ffffff';
+    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+    let playerIconX = barX + (barWidth * progress);
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillRect(playerIconX - 5, barY - 4, 10, 16);
+
+    // Triângulo de chegada (Portal Final)
+    ctx.beginPath();
+    ctx.moveTo(barX + barWidth + 10, barY + 12);
+    ctx.lineTo(barX + barWidth + 22, barY - 4);
+    ctx.lineTo(barX + barWidth + 34, barY + 12);
+    ctx.closePath();
+    ctx.fillStyle = '#ff0077';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Partículas
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    particles.forEach(p => ctx.fillRect(p.x, p.y, p.size, p.size));
+
+    // Obstáculos (Vermelho/Rosa com dano)
+    obstacles.forEach(obs => {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = obs.color;
+        ctx.fillStyle = obs.color;
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+    });
+
+    // Duff (Frequência Normal - 100% Branca com linha branca)
+    ctx.save();
+    ctx.translate(duff.x, duff.y);
+    
+    // Efeito de piscar se estiver levando dano recente
+    if (duff.dashTime > 0) { 
+        ctx.shadowBlur = 40; ctx.shadowColor = '#fff'; ctx.fillStyle = '#fff'; 
+    } else { 
+        ctx.shadowBlur = 22; 
+        ctx.shadowColor = '#ffffff'; // Cor branca solicitada
+        ctx.fillStyle = '#050505'; 
+    }
+
+    ctx.beginPath(); ctx.arc(0, 0, duff.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = duff.dashTime > 0 ? '#00ffcc' : '#ffffff'; // Linha branca
+    ctx.lineWidth = 3; ctx.stroke();
+
+    // Olhos
+    let eyeOffsetX = Math.max(-5, Math.min(5, duff.vx * 0.4));
+    let eyeOffsetY = Math.max(-5, Math.min(5, duff.vy * 0.4));
+
+    ctx.fillStyle = '#fff'; 
+    ctx.shadowBlur = 0; 
+    ctx.beginPath(); ctx.arc(-7 + eyeOffsetX, -3 + eyeOffsetY, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7 + eyeOffsetX, -3 + eyeOffsetY, 4, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
